@@ -124,14 +124,26 @@ if uploaded_file is not None:
     # --- 4. MANUAL EXECUTION BUTTON ---
     st.sidebar.markdown("### Ready to Process?")
     if st.sidebar.button("🚀 Apply Settings & Process Data", type="primary"):
-        with st.spinner("Loading full dataset into memory (This may take a moment)..."):
+        with st.spinner("Loading full dataset (Optimizing memory footprint)..."):
+            import gc # Import garbage collector
             uploaded_file.seek(0)
+            
+            # 1. Load data
             df = pd.read_csv(uploaded_file, usecols=kept_columns, low_memory=True)
+            
+            # 2. Downcast numeric data
             for col in df.select_dtypes(include=["float64"]).columns:
                 df[col] = pd.to_numeric(df[col], downcast="float")
             for col in df.select_dtypes(include=["int64"]).columns:
                 df[col] = pd.to_numeric(df[col], downcast="integer")
+                
+            # 3. Aggressively compress text to 'category' type
+            for col in df.select_dtypes(include=["object"]).columns:
+                # Only categorize if there are repeated values to actually save space
+                if df[col].nunique() / len(df[col]) < 0.5: 
+                    df[col] = df[col].astype("category")
             
+            # 4. Handle custom missing values
             if custom_missing:
                 missing_list = [x.strip() for x in custom_missing.split(",")]
                 to_replace = []
@@ -142,9 +154,11 @@ if uploaded_file is not None:
                         to_replace.append(x)
                 df.replace(to_replace, np.nan, inplace=True)
 
+            # 5. Typo fix (Warning: This takes extra memory)
             if enable_typo_fix and selected_text_cols:
-                # Built-in difflib is used here for WebAssembly compatibility instead of rapidfuzz
                 for col in selected_text_cols:
+                    if df[col].dtype == 'category':
+                        df[col] = df[col].astype(str) # Temporarily convert back to fix typos
                     unique_vals = [str(x) for x in df[col].dropna().unique()]
                     canonical_map = {}
                     for val in unique_vals:
@@ -153,10 +167,14 @@ if uploaded_file is not None:
                             continue
                         matches = difflib.get_close_matches(val, list(canonical_map.values()), n=1, cutoff=similarity_threshold/100.0)
                         canonical_map[val] = matches[0] if matches else val
-                    df[col] = df[col].map(canonical_map)
+                    df[col] = df[col].map(canonical_map).astype("category")
 
+            # 6. Save to session state and force clear RAM
             st.session_state.processed_data = df
-            st.success("Data successfully processed!")
+            del df # Delete local reference
+            gc.collect() # Force Python to empty the trash
+            
+            st.success("Data successfully processed & compressed!")
 
     # --- 5. MAIN INTERFACE ---
     if "processed_data" in st.session_state:
