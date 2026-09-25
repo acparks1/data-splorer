@@ -14,12 +14,11 @@
     <script>
       stlite.mount(
         {
-          // List your app's package dependencies here
-          requirements: ["pandas", "numpy", "scipy", "rapidfuzz"],
+          requirements: ["pandas", "numpy", "scipy"],
           entrypoint: "app.py",
           files: {
             "app.py": {
-              url: "app.py" // Tells Stlite to look for your app.py file in the same GitHub folder
+              url: "app.py"
             }
           }
         },
