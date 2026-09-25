@@ -18,8 +18,11 @@
           entrypoint: "app.py",
           files: {
             "app.py": {
-              url: "app.py"
+              url: "app.py" 
             }
+          },
+          streamlitConfig: {
+            "server.maxUploadSize": 1024
           }
         },
         document.getElementById("root")
