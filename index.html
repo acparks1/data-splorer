@@ -19,11 +19,9 @@
           files: {
             "app.py": {
               url: "app.py" 
-            }
-          },
-          // This overrides Streamlit's default 200MB limit
-          streamlitConfig: {
-            "server.maxUploadSize": 1024
+            },
+            // This creates a virtual Streamlit config file in the browser
+            ".streamlit/config.toml": "[server]\nmaxUploadSize = 1024\n"
           }
         },
         document.getElementById("root")
